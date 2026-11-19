@@ -10,7 +10,7 @@ const clean = (s: unknown, max = 24) => String(s ?? "").toLowerCase().replace(/[
 export default async (req: Request, context: Context) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 })
   const ua = req.headers.get("user-agent") ?? ""
-  if (/bot|crawl|spider|preview|headless|lighthouse/i.test(ua)) return new Response(null, { status: 204 })
+  if (/bot|crawl|spider|preview|headless|lighthouse|facebookexternalhit|bytespider|python|curl|wget|go-http|node-fetch|axios/i.test(ua)) return new Response(null, { status: 204 })
 
   let body: Record<string, unknown> = {}
   try { body = JSON.parse(await req.text()) } catch { return new Response("Bad request", { status: 400 }) }

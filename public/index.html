@@ -447,13 +447,13 @@ tick();setInterval(tick,1000);
 // analytics: count clicks on buy buttons
 document.querySelectorAll('.buy').forEach(b=>b.addEventListener('click',()=>{try{window.gtag&&gtag('event','begin_checkout',{currency:'USD',value:document.body.classList.contains('has-promo')?4.9:7});window.fbq&&fbq('track','InitiateCheckout')}catch(e){}}));
 // own analytics (admin dashboard)
-(function(){try{if(localStorage.getItem('zv_admin'))return;let v=localStorage.getItem('zv');if(!v){v=Math.random().toString(36).slice(2,12);localStorage.setItem('zv',v)}
+(function(){try{if(localStorage.getItem('zv_admin')||navigator.webdriver)return;let v=localStorage.getItem('zv');if(!v){v=Math.random().toString(36).slice(2,12);localStorage.setItem('zv',v)}
 const q=new URLSearchParams(location.search),r=(q.get('utm_source')||document.referrer||'').toLowerCase();
 const s=/tiktok/.test(r)?'tiktok':/youtu/.test(r)?'youtube':/instagram/.test(r)?'instagram':/facebook|fb\./.test(r)?'facebook':/google/.test(r)?'google':/whatsapp|wa\.me/.test(r)?'whatsapp':r?'other':'direct';
 const d=/Mobi|Android|iPhone/i.test(navigator.userAgent)?'m':'d';
 const send=t=>{const b=JSON.stringify({t,s,d,vid:v});if(t==='c'&&navigator.sendBeacon){navigator.sendBeacon('/api/track',new Blob([b],{type:'application/json'}));return}fetch('/api/track',{method:'POST',body:b,keepalive:true,headers:{'content-type':'application/json'}}).catch(()=>{})};
-send('v');let n=0;const hb=setInterval(()=>{if(document.visibilityState==='visible'){send('h');if(++n>=20)clearInterval(hb)}},30000);
-document.querySelectorAll('.buy').forEach(b=>b.addEventListener('click',()=>send('c')));}catch(e){}})();
+let seen=false;const view=()=>{if(seen)return;seen=true;send('v')};setTimeout(()=>{if(document.visibilityState==='visible')view()},3000);['scroll','touchstart','pointerdown','keydown'].forEach(ev=>addEventListener(ev,view,{once:true,passive:true}));let n=0;const hb=setInterval(()=>{if(seen&&document.visibilityState==='visible'){send('h');if(++n>=20)clearInterval(hb)}},30000);
+document.querySelectorAll('.buy').forEach(b=>b.addEventListener('click',()=>{view();send('c')}));}catch(e){}})();
 </script>
 </body>
 </html>
