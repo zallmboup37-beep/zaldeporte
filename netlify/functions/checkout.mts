@@ -31,7 +31,6 @@ export default async (req: Request, context: Context) => {
     email, first_name, last_name,
     phone: { number, country_code },
     redirect_url: `${origin}/gracias/`,
-    embed_origins: [origin],
     customer_ip: context.ip,
     custom_metadata: { source: str(body.source, 30) || "landing" },
   }
