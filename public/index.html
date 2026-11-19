@@ -554,7 +554,7 @@ f.addEventListener('submit',async e=>{e.preventDefault();err.textContent='';docu
  const v=k=>$('cf-'+k).value.trim(),bad=(k,m)=>{$('cf-'+k).closest('.fl').classList.add('bad');err.textContent=m;$('cf-'+k).focus()};
  const nm=v('nm').replace(/\s+/g,' '),parts=nm.split(' '),first=parts[0]||'',last=parts.slice(1).join(' ')||first;
  const promo=document.body.classList.contains('has-promo');
- const d={first_name:first,last_name:last,email:v('em'),phone:v('ph'),country:v('cc'),discount_code:promo?'CAMPEON':v('dc'),source:(document.referrer||'').slice(0,30)};
+ const d={first_name:first,last_name:last,email:v('em'),phone:v('ph'),country:v('cc'),discount_code:(new URLSearchParams(location.search).get('codigo')||'').trim().toUpperCase()||(promo?'CAMPEON':v('dc')),source:(document.referrer||'').slice(0,30)};
  if(nm.length<2)return bad('nm','Escribe tu nombre.');
  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email))return bad('em','Revisa tu correo: ahí recibirás el libro.');
  if(d.phone.replace(/\D/g,'').length<6)return bad('ph','Escribe un número válido.');
