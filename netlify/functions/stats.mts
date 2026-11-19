@@ -25,15 +25,20 @@ export default async (req: Request, context: Context) => {
   if (req.headers.get("x-admin-key") !== expected) return Response.json({ error: "unauthorized" }, { status: 401 })
 
   const url = new URL(req.url)
-  const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 1, 1), 30)
   const now = Date.now()
+  // range: m20 (20 min), h1 (1 hour), d1 (today), d7, d30
+  const range = url.searchParams.get("range") || ("d" + (url.searchParams.get("days") || "1"))
+  const short = range === "m20" || range === "h1"
+  const windowMs = range === "m20" ? 20 * 6e4 : range === "h1" ? 36e5 : 0
+  const days = short ? (new Date(now - windowMs).getUTCDate() !== new Date(now).getUTCDate() ? 2 : 1)
+    : Math.min(Math.max(Number(range.slice(1)) || 1, 1), 30)
   const store = getStore({ name: "analytics", consistency: "strong" })
 
   const evs: Ev[] = []
   for (let i = 0; i < days; i++) {
     const day = new Date(now - i * 864e5).toISOString().slice(0, 10)
     const { blobs } = await store.list({ prefix: `e/${day}/` })
-    for (const b of blobs) { const e = parse(b.key); if (e) evs.push(e) }
+    for (const b of blobs) { const e = parse(b.key); if (e && (!short || now - e.ts <= windowMs)) evs.push(e) }
   }
 
   const live = new Set(evs.filter(e => now - e.ts < 90_000).map(e => e.v)).size
@@ -44,7 +49,19 @@ export default async (req: Request, context: Context) => {
 
   // Time series: hourly for "today", daily otherwise.
   const series: { label: string; views: number; clicks: number }[] = []
-  if (days === 1) {
+  if (short) {
+    const step = range === "m20" ? 6e4 : 5 * 6e4
+    const n = range === "m20" ? 20 : 12
+    const start = now - n * step
+    for (let i = 0; i < n; i++) {
+      const t = new Date(start + (i + 1) * step)
+      series.push({ label: String(t.getUTCHours()).padStart(2, "0") + ":" + String(t.getUTCMinutes()).padStart(2, "0"), views: 0, clicks: 0 })
+    }
+    for (const e of [...views, ...clicks]) {
+      const i = Math.min(n - 1, Math.max(0, Math.floor((e.ts - start) / step)))
+      e.t === "v" ? series[i].views++ : series[i].clicks++
+    }
+  } else if (days === 1) {
     for (let h = 0; h < 24; h++) series.push({ label: `${h}h`, views: 0, clicks: 0 })
     const start = new Date(new Date(now).toISOString().slice(0, 10) + "T00:00:00Z").getTime()
     for (const e of [...views, ...clicks]) {
@@ -64,11 +81,11 @@ export default async (req: Request, context: Context) => {
     }
   }
 
-  const recent = [...views, ...clicks].sort((a, b) => b.ts - a.ts).slice(0, 30)
+  const recent = [...views, ...clicks].sort((a, b) => b.ts - a.ts).slice(0, 100)
     .map(e => ({ ts: e.ts, type: e.t, country: e.c, source: e.s, device: e.d }))
 
   return Response.json({
-    days, generatedAt: now, live,
+    range, days: short ? 1 : days, generatedAt: now, live,
     views: views.length, visitors: visitors.size, clicks: clicks.length, clickers: clickers.size,
     countries: tally(views.map(e => e.c)).slice(0, 12),
     sources: tally(views.map(e => e.s)),
