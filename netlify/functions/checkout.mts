@@ -46,8 +46,11 @@ export default async (req: Request, context: Context) => {
   if (!res.ok) {
     console.error("Chariow checkout error", res.status, JSON.stringify(json).slice(0, 500))
     const msg = String(json?.message ?? "")
-    const discountProblem = /discount|code|coupon|réduc|promo/i.test(msg) && discount_code
-    return Response.json({ error: discountProblem ? "discount_invalid" : "chariow_error", fallback: FALLBACK_URL }, { status: 502 })
+    const error = /phone|téléphone|telefono/i.test(msg) ? "phone_invalid"
+      : /email|e-mail|correo/i.test(msg) ? "email_invalid"
+      : (/discount|coupon|réduction|promo/i.test(msg) && discount_code) ? "discount_invalid"
+      : "chariow_error"
+    return Response.json({ error, fallback: FALLBACK_URL }, { status: error === "chariow_error" ? 502 : 422 })
   }
 
   const step = json?.data?.step

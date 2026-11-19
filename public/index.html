@@ -563,6 +563,8 @@ f.addEventListener('submit',async e=>{e.preventDefault();err.textContent='';docu
  try{const ac=new AbortController(),to=setTimeout(()=>ac.abort(),20000);const r=await fetch('/api/checkout',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(d),signal:ac.signal});clearTimeout(to);const j=await r.json().catch(()=>({}));
   if(r.ok&&j.url){try{window.gtag&&gtag('event','add_payment_info')}catch(x){}window.location.assign(j.url);setTimeout(()=>{btn.disabled=false;bt.textContent=priceTxt()},8000);return}
   if(j.step==='already_purchased')err.textContent='Ya compraste este libro con este correo. Revisa tu bandeja de entrada.';
+  else if(j.error==='phone_invalid'){bad('ph','Ese número no es válido para el país elegido. Revisa el número y el país.');btn.disabled=false;bt.textContent=priceTxt();return}
+  else if(j.error==='email_invalid'){bad('em','Ese correo no es válido.');btn.disabled=false;bt.textContent=priceTxt();return}
   else if(j.error==='discount_invalid')err.textContent='Ese código no es válido o ya expiró.';
   else if(j.error==='invalid_fields')err.textContent='Revisa tus datos, por favor.';
   else{window.location.assign(FALLBACK);return}
