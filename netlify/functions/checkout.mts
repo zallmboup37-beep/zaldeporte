@@ -1,8 +1,8 @@
 import type { Config, Context } from "@netlify/functions"
+import { PRODUCT_ID, chariowBase, orders, randomToken } from "../lib/guide.ts"
 
 // Creates a Chariow checkout from the landing-page form and returns the hosted payment URL.
 // The Chariow API key lives only in the CHARIOW_API_KEY environment variable (never in code).
-const PRODUCT_ID = "prd_vkiqczxt"
 const FALLBACK_URL = "https://zalsport.mychariow.store/prd_vkiqczxt/checkout"
 
 const str = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max)
@@ -26,17 +26,21 @@ export default async (req: Request, context: Context) => {
   }
 
   const origin = new URL(req.url).origin
+  // Chariow does not substitute a sale id into redirect_url, and the sale does not exist yet.
+  // So we mint our own unguessable token, put it in the return URL, and link it to the sale below.
+  const token = randomToken()
+  const returnUrl = `${origin}/gracias/?t=${token}`
   const payload: Record<string, unknown> = {
     product_id: PRODUCT_ID,
     email, first_name, last_name,
     phone: { number, country_code },
-    redirect_url: `${origin}/gracias/`,
+    redirect_url: returnUrl,
     customer_ip: context.ip,
     custom_metadata: { source: str(body.source, 30) || "landing" },
   }
   if (discount_code) payload.discount_code = discount_code
 
-  const res = await fetch("https://api.chariow.com/v1/checkout", {
+  const res = await fetch(`${chariowBase()}/v1/checkout`, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(payload),
@@ -56,7 +60,18 @@ export default async (req: Request, context: Context) => {
   const step = json?.data?.step
   if (step === "already_purchased") return Response.json({ step, message: json?.data?.message ?? null })
   const url = json?.data?.payment?.checkout_url
-  if (step === "completed" || !url) return Response.json({ step: "completed", url: `${origin}/gracias/` })
+
+  // Remember token -> sale so /gracias/ can later ask Chariow whether this sale is really paid.
+  const saleId = json?.data?.purchase?.id
+  if (typeof saleId === "string" && saleId) {
+    try {
+      await orders().setJSON(token, { sale_id: saleId, product_id: PRODUCT_ID, created: Date.now() })
+    } catch (e) {
+      console.error("orders store write failed", String(e))
+    }
+  }
+
+  if (step === "completed" || !url) return Response.json({ step: "completed", url: returnUrl })
   return Response.json({ step: "payment", url })
 }
 
