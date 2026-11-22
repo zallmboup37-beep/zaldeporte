@@ -550,7 +550,7 @@ document.querySelectorAll('.card').forEach(c=>c.addEventListener('mousemove',e=>
 // magnetic pills
 if(!red&&matchMedia('(pointer:fine)').matches)document.querySelectorAll('.pill').forEach(b=>{b.addEventListener('mousemove',e=>{const r=b.getBoundingClientRect();b.style.transform='translate('+((e.clientX-r.left-r.width/2)*.15)+'px,'+((e.clientY-r.top-r.height/2)*.25)+'px)'});b.addEventListener('mouseleave',()=>b.style.transform='')});
 // contact email (one place)
-const CONTACT_EMAIL='';
+const CONTACT_EMAIL='contactozalsport@gmail.com';
 if(CONTACT_EMAIL)document.querySelectorAll('[data-mail]').forEach(el=>{el.hidden=false;el.querySelectorAll('.mailto').forEach(a=>{a.href='mailto:'+CONTACT_EMAIL;a.textContent=CONTACT_EMAIL})});
 // promo countdown
 const PROMO_END=new Date('2026-11-22T23:59:59Z').getTime();
